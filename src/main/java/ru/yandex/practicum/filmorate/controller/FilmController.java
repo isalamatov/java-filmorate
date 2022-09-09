@@ -30,7 +30,7 @@ public class FilmController {
             throw new ValidationException("Film with ID" + film.getId() + "doesn't exists.");
         }
         films.put(film.getId(), film);
-        return films.get(film.getId());
+        return film;
     }
 
     @PostMapping("/films")
@@ -45,7 +45,7 @@ public class FilmController {
         }
         film.setId(id.get());
         films.put(id.get(), film);
-        return films.get(id.get());
+        return film;
     }
 
 }

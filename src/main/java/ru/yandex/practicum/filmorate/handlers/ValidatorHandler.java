@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class ValidatorHandler {
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseBody
     public ResponseEntity<List> processUnmergeException(final MethodArgumentNotValidException ex) {

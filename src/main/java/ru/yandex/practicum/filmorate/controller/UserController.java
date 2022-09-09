@@ -30,7 +30,7 @@ public class UserController {
             throw new ValidationException("User with ID" + user.getId() + "doesn't exists.");
         }
         users.put(user.getId(), user);
-        return users.get(user.getId());
+        return user;
     }
 
     @PostMapping("/users")
@@ -49,7 +49,7 @@ public class UserController {
         }
         user.setId(id.get());
         users.put(user.getId(), user);
-        return users.get(user.getId());
+        return user;
     }
 
 }

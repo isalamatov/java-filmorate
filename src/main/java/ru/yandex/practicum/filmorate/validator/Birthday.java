@@ -11,7 +11,6 @@ import static java.lang.annotation.ElementType.PARAMETER;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Constraint(validatedBy = BirthdayValidator.class)
-
 public @interface Birthday {
     String message() default "Birthday should be before actual moment.";
 

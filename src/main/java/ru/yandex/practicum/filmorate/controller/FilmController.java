@@ -1,51 +1,110 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exceptions.FilmNotFoundException;
+import ru.yandex.practicum.filmorate.exceptions.UserNotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import javax.validation.Valid;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
+@RequestMapping("/films")
 @Slf4j
 public class FilmController {
-    HashMap<Integer, Film> films = new HashMap<>();
     private Integer idCounter = 0;
+    private FilmStorage filmStorage;
+    private FilmService filmService;
+    private UserStorage userStorage;
 
-    @GetMapping("/films")
+    @Autowired
+    public FilmController(FilmStorage filmStorage, FilmService filmService, UserStorage userStorage) {
+        this.filmStorage = filmStorage;
+        this.filmService = filmService;
+        this.userStorage = userStorage;
+    }
+
+    @GetMapping
     public List<Film> getAll() {
         log.trace("Get all films request received.");
-        return new ArrayList<>(films.values());
+        return filmStorage.getAll();
     }
 
-    @PutMapping("/films")
+    @GetMapping("/{id}")
+    public Film getFilm(@PathVariable Integer id) {
+        log.trace("Get film request received.");
+        return filmStorage.get(id);
+    }
+
+    @PutMapping
     public Film update(@Valid @RequestBody Film film) {
         log.trace("Update film request received with data: {}", film);
-        if (!films.containsKey(film.getId())) {
-            throw new ValidationException("Film with ID" + film.getId() + "doesn't exists.");
-        }
-        films.put(film.getId(), film);
+        filmStorage.update(film);
         return film;
     }
 
-    @PostMapping("/films")
+    @PostMapping
     public Film add(@Valid @RequestBody Film film) {
         log.trace("Add film request received with data: {}", film);
-        Optional<Integer> id = Optional.ofNullable(film.getId());
-        if (id.isPresent() && films.containsKey(film.getId())) {
-            throw new ValidationException("Film with ID" + film.getId() + "already exists, use PUT method to update it.");
-        }
-        if (id.isEmpty()) {
-            id = Optional.of(++idCounter);
-        }
-        film.setId(id.get());
-        films.put(id.get(), film);
+        filmStorage.add(film);
         return film;
     }
 
+    @PutMapping("/{id}/like/{userId}")
+    public void like(@PathVariable String id, @PathVariable String userId) {
+        Integer userID = parseUserId(userId);
+        Integer filmId = parseFilmId(id);
+        filmService.like(filmId, userID);
+    }
+
+    @DeleteMapping("/{id}/like/{userId}")
+    public void deleteLike(@PathVariable String id, @PathVariable String userId) {
+        Integer userID = parseUserId(userId);
+        Integer filmId = parseFilmId(id);
+        filmService.deleteLike(filmId, userID);
+    }
+
+    @GetMapping("/popular")
+    public List<Film> getPopularFilms(@RequestParam(defaultValue = "10") Integer count) {
+        if (count < 0) {
+            throw new ValidationException("Count must be positive number");
+        }
+        return filmService.getPopularFilms(count);
+    }
+
+    private Integer parseFilmId(String id) {
+        Integer result;
+        try {
+            result = Integer.parseInt(id);
+        } catch (NumberFormatException e) {
+            throw new ValidationException(
+                    String.format("Film id must be valid integer number \"%s\" ", e.getMessage())
+            );
+        }
+        if (filmStorage.getAll().stream().noneMatch(x -> x.getId() == result)) {
+            throw new FilmNotFoundException(result);
+        }
+        return result;
+    }
+
+    private Integer parseUserId(String id) {
+        Integer result;
+        try {
+            result = Integer.parseInt(id);
+        } catch (NumberFormatException e) {
+            throw new ValidationException(
+                    String.format("User id must be valid integer number \"%s\" ", e.getMessage())
+            );
+        }
+        if (userStorage.getAll().stream().noneMatch(x -> x.getId() == result)) {
+            throw new UserNotFoundException(result);
+        }
+        return result;
+    }
 }

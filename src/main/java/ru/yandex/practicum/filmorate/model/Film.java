@@ -11,6 +11,8 @@ import javax.validation.constraints.Digits;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Positive;
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -27,4 +29,5 @@ public class Film {
     @Duration
     @Positive
     private Integer duration;
+    private Set<Integer> likedBy = new HashSet<>();
 }

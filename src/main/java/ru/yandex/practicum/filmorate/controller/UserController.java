@@ -1,55 +1,91 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exceptions.UserNotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import javax.validation.Valid;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
-@Slf4j
+@RequestMapping("/users")
 public class UserController {
-    HashMap<Integer, User> users = new HashMap<>();
-    private int idCounter = 0;
 
-    @GetMapping("/users")
+    private UserStorage userStorage;
+
+    private UserService userService;
+
+    @Autowired
+    public UserController(UserStorage userStorage, UserService userService) {
+        this.userStorage = userStorage;
+        this.userService = userService;
+    }
+
+    @GetMapping
     public List<User> getAll() {
-        log.trace("Get all users request received.");
-        return new ArrayList<>(users.values());
+        return userService.getAll();
     }
 
-    @PutMapping("/users")
+    @GetMapping("/{id}")
+    public User get(@PathVariable Integer id) {
+        return userService.get(id);
+    }
+
+    @PutMapping
     public User update(@Valid @RequestBody User user) {
-        log.trace("Update user request received with data: {}", user);
-        if (!users.containsKey(user.getId())) {
-            throw new ValidationException("User with ID" + user.getId() + "doesn't exists.");
-        }
-        users.put(user.getId(), user);
+        userService.update(user);
         return user;
     }
 
-    @PostMapping("/users")
+    @PostMapping
     public User add(@Valid @RequestBody User user) {
-        log.trace("Add user request received with data: {}", user);
-        Optional<Integer> id = Optional.ofNullable(user.getId());
-        Optional<String> name = Optional.ofNullable(user.getName());
-        if (id.isPresent() && users.containsKey(user.getId())) {
-            throw new RuntimeException("Film with ID" + user.getId() + "already exists, use PUT method to update it.");
-        }
-        if (id.isEmpty()) {
-            id = Optional.of(++idCounter);
-        }
-        if (name.isEmpty() || name.get().isBlank()) {
-            user.setName(user.getLogin());
-        }
-        user.setId(id.get());
-        users.put(user.getId(), user);
+        userService.add(user);
         return user;
     }
 
+    @PutMapping("/{id}/friends/{friendId}")
+    public void addFriend(@PathVariable String id, @PathVariable String friendId) {
+        Integer mainId = parseId(id);
+        Integer secondaryId = parseId(friendId);
+        userService.addFriend(mainId, secondaryId);
+    }
+
+    @DeleteMapping("/{id}/friends/{friendId}")
+    public void deleteFriend(@PathVariable String id, @PathVariable String friendId) {
+        Integer mainId = parseId(id);
+        Integer secondaryId = parseId(friendId);
+        userService.deleteFriend(mainId, secondaryId);
+    }
+
+    @GetMapping("/{id}/friends")
+    public List<User> getFriends(@PathVariable String id) {
+        Integer mainId = parseId(id);
+        return userService.getFriends(mainId);
+    }
+
+    @GetMapping("/{id}/friends/common/{otherId}")
+    public List<User> getCommonFriends(@PathVariable String id, @PathVariable String otherId) {
+        Integer mainId = parseId(id);
+        Integer secondaryId = parseId(otherId);
+        return userService.getCommonFriends(mainId, secondaryId);
+    }
+
+    private Integer parseId(String id) {
+        Integer result;
+        try {
+            result = Integer.parseInt(id);
+        } catch (NumberFormatException e) {
+            throw new ValidationException(
+                    String.format("Id and friend id should be valid integer numbers \"%s\" ", e.getMessage())
+            );
+        }
+        if (userService.getAll().stream().noneMatch(x -> x.getId() == result)) {
+            throw new UserNotFoundException(result);
+        }
+        return result;
+    }
 }

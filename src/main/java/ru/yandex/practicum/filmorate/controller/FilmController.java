@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exceptions.FilmNotFoundException;
@@ -8,51 +7,42 @@ import ru.yandex.practicum.filmorate.exceptions.UserNotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.service.UserService;
 
 import javax.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/films")
-@Slf4j
 public class FilmController {
-    private Integer idCounter = 0;
-    private FilmStorage filmStorage;
     private FilmService filmService;
-    private UserStorage userStorage;
+    private UserService userService;
 
     @Autowired
-    public FilmController(FilmStorage filmStorage, FilmService filmService, UserStorage userStorage) {
-        this.filmStorage = filmStorage;
+    public FilmController(FilmService filmService, UserService userService) {
         this.filmService = filmService;
-        this.userStorage = userStorage;
+        this.userService = userService;
     }
 
     @GetMapping
     public List<Film> getAll() {
-        log.trace("Get all films request received.");
-        return filmStorage.getAll();
+        return filmService.getAll();
     }
 
     @GetMapping("/{id}")
     public Film getFilm(@PathVariable Integer id) {
-        log.trace("Get film request received.");
-        return filmStorage.get(id);
+        return filmService.get(id);
     }
 
     @PutMapping
     public Film update(@Valid @RequestBody Film film) {
-        log.trace("Update film request received with data: {}", film);
-        filmStorage.update(film);
+        filmService.update(film);
         return film;
     }
 
     @PostMapping
     public Film add(@Valid @RequestBody Film film) {
-        log.trace("Add film request received with data: {}", film);
-        filmStorage.add(film);
+        filmService.add(film);
         return film;
     }
 
@@ -87,7 +77,7 @@ public class FilmController {
                     String.format("Film id must be valid integer number \"%s\" ", e.getMessage())
             );
         }
-        if (filmStorage.getAll().stream().noneMatch(x -> x.getId() == result)) {
+        if (filmService.getAll().stream().noneMatch(x -> x.getId() == result)) {
             throw new FilmNotFoundException(result);
         }
         return result;
@@ -102,7 +92,7 @@ public class FilmController {
                     String.format("User id must be valid integer number \"%s\" ", e.getMessage())
             );
         }
-        if (userStorage.getAll().stream().noneMatch(x -> x.getId() == result)) {
+        if (userService.getAll().stream().noneMatch(x -> x.getId() == result)) {
             throw new UserNotFoundException(result);
         }
         return result;

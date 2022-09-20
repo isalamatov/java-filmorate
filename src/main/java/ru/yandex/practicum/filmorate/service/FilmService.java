@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exceptions.UserDoesnotLikeThatMovieException;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class FilmService {
     private UserStorage userStorage;
     private FilmStorage filmStorage;
@@ -23,7 +25,28 @@ public class FilmService {
         this.filmStorage = filmStorage;
     }
 
+    public List<Film> getAll() {
+        log.trace("Get all films request received.");
+        return filmStorage.getAll();
+    }
+
+    public Film get(Integer id) {
+        log.trace("Get film request received: {}", id);
+        return filmStorage.get(id);
+    }
+
+    public void update(Film film) {
+        log.trace("Update film request received with data: {}", film);
+        filmStorage.update(film);
+    }
+
+    public void add(Film film) {
+        log.trace("Add film request received with data: {}", film);
+        filmStorage.add(film);
+    }
+
     public void like(Integer filmId, Integer userID) {
+        log.trace("Like film request received with data: {}", filmId, userID);
         if (userStorage.get(userID).getLikedFilms() == null) {
             userStorage.get(userID).setLikedFilms(new HashSet<>());
         }
@@ -35,6 +58,7 @@ public class FilmService {
     }
 
     public void deleteLike(Integer filmId, Integer userID) {
+        log.trace("Delete like request received with data: {}", filmId, userID);
         if (userStorage.get(userID).getLikedFilms().contains(filmId)) {
             userStorage.get(userID).getLikedFilms().remove(filmId);
         } else {
@@ -48,7 +72,7 @@ public class FilmService {
     }
 
     public List<Film> getPopularFilms(Integer count) {
-
+        log.trace("Get popular films request received, list size: {}", count);
         return filmStorage.getAll().stream()
                 .peek(x -> {
                     if (x.getLikedBy() == null) x.setLikedBy(new HashSet<>());

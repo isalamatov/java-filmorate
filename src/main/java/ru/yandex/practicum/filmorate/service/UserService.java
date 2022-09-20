@@ -1,25 +1,43 @@
 package ru.yandex.practicum.filmorate.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.SettableListenableFuture;
 import ru.yandex.practicum.filmorate.exceptions.UsersAlreadyNotFriendsException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class UserService {
     private UserStorage userStorage;
 
     @Autowired
     public UserService(UserStorage userStorage) {
         this.userStorage = userStorage;
+    }
+
+    public List<User> getAll() {
+        log.trace("Get all users request received.");
+        return userStorage.getAll();
+    }
+
+    public User get(Integer id) {
+        log.trace("Get user request received.");
+        return userStorage.get(id);
+    }
+
+    public void update(User user) {
+        log.trace("Update user request received with data: {}", user);
+        userStorage.update(user);
+    }
+
+    public void add(User user) {
+        log.trace("Add user request received with data: {}", user);
+        userStorage.add(user);
     }
 
     public void addFriend(Integer mainId, Integer secondaryId) {

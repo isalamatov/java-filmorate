@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exceptions.UserNotFoundException;
@@ -14,7 +13,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/users")
-@Slf4j
 public class UserController {
 
     private UserStorage userStorage;
@@ -29,27 +27,23 @@ public class UserController {
 
     @GetMapping
     public List<User> getAll() {
-        log.trace("Get all users request received.");
-        return userStorage.getAll();
+        return userService.getAll();
     }
 
     @GetMapping("/{id}")
     public User get(@PathVariable Integer id) {
-        log.trace("Get user request received.");
-        return userStorage.get(id);
+        return userService.get(id);
     }
 
     @PutMapping
     public User update(@Valid @RequestBody User user) {
-        log.trace("Update user request received with data: {}", user);
-        userStorage.update(user);
+        userService.update(user);
         return user;
     }
 
     @PostMapping
     public User add(@Valid @RequestBody User user) {
-        log.trace("Add user request received with data: {}", user);
-        userStorage.add(user);
+        userService.add(user);
         return user;
     }
 
@@ -89,7 +83,7 @@ public class UserController {
                     String.format("Id and friend id should be valid integer numbers \"%s\" ", e.getMessage())
             );
         }
-        if (userStorage.getAll().stream().noneMatch(x -> x.getId() == result)) {
+        if (userService.getAll().stream().noneMatch(x -> x.getId() == result)) {
             throw new UserNotFoundException(result);
         }
         return result;

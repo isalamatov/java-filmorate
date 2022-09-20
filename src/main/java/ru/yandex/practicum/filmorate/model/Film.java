@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.format.annotation.DateTimeFormat;
 import ru.yandex.practicum.filmorate.validator.Description;
@@ -15,7 +14,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Data
-@AllArgsConstructor
 public class Film {
     private Integer id;
     @NotBlank(message = "Name must not be blank.")
@@ -30,4 +28,28 @@ public class Film {
     @Positive
     private Integer duration;
     private Set<Integer> likedBy = new HashSet<>();
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Film)) return false;
+
+        Film film = (Film) o;
+
+        if (getName() != null ? !getName().equals(film.getName()) : film.getName() != null) return false;
+        if (getDescription() != null ? !getDescription().equals(film.getDescription()) : film.getDescription() != null)
+            return false;
+        if (getReleaseDate() != null ? !getReleaseDate().equals(film.getReleaseDate()) : film.getReleaseDate() != null)
+            return false;
+        return getDuration() != null ? getDuration().equals(film.getDuration()) : film.getDuration() == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = getName() != null ? getName().hashCode() : 0;
+        result = 31 * result + (getDescription() != null ? getDescription().hashCode() : 0);
+        result = 31 * result + (getReleaseDate() != null ? getReleaseDate().hashCode() : 0);
+        result = 31 * result + (getDuration() != null ? getDuration().hashCode() : 0);
+        return result;
+    }
 }

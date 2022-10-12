@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exceptions.UserDoesnotLikeThatMovieException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
@@ -47,25 +48,33 @@ public class FilmService {
 
     public void like(Integer filmId, Integer userID) {
         log.trace("Like film request received with data: {}", filmId, userID);
-        if (userStorage.get(userID).getLikedFilms() == null) {
-            userStorage.get(userID).setLikedFilms(new HashSet<>());
+        Film film = filmStorage.get(filmId);
+        User user = userStorage.get(userID);
+        if (user.getLikedFilms() == null) {
+            user.setLikedFilms(new HashSet<>());
         }
-        if (filmStorage.get(filmId).getLikedBy() == null) {
-            filmStorage.get(filmId).setLikedBy(new HashSet<>());
+        if (film.getLikedBy() == null) {
+            film.setLikedBy(new HashSet<>());
         }
-        userStorage.get(userID).getLikedFilms().add(filmId);
-        filmStorage.get(filmId).getLikedBy().add(userID);
+        user.getLikedFilms().add(filmId);
+        userStorage.update(user);
+        film.getLikedBy().add(userID);
+        filmStorage.update(film);
     }
 
     public void deleteLike(Integer filmId, Integer userID) {
         log.trace("Delete like request received with data: {}", filmId, userID);
-        if (userStorage.get(userID).getLikedFilms().contains(filmId)) {
-            userStorage.get(userID).getLikedFilms().remove(filmId);
+        Film film = filmStorage.get(filmId);
+        User user = userStorage.get(userID);
+        if (user.getLikedFilms().contains(filmId)) {
+            user.getLikedFilms().remove(filmId);
+            userStorage.update(user);
         } else {
             throw new UserDoesnotLikeThatMovieException(filmId, userID);
         }
-        if (filmStorage.get(filmId).getLikedBy().contains(userID)) {
-            filmStorage.get(filmId).getLikedBy().remove(userID);
+        if (film.getLikedBy().contains(userID)) {
+            film.getLikedBy().remove(userID);
+            filmStorage.update(film);
         } else {
             throw new UserDoesnotLikeThatMovieException(filmId, userID);
         }

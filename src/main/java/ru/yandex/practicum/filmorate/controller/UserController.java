@@ -38,13 +38,13 @@ public class UserController {
     @PutMapping
     public User update(@Valid @RequestBody User user) {
         userService.update(user);
-        return user;
+        return userService.get(user.getId());
     }
 
     @PostMapping
     public User add(@Valid @RequestBody User user) {
         userService.add(user);
-        return user;
+        return userService.get(user.getId());
     }
 
     @PutMapping("/{id}/friends/{friendId}")

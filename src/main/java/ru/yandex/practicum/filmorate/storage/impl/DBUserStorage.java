@@ -2,11 +2,8 @@ package ru.yandex.practicum.filmorate.storage.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
-import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.ResultSetExtractor;
-import org.springframework.jdbc.core.RowMapperResultSetExtractor;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
@@ -108,11 +105,23 @@ public class DBUserStorage implements UserStorage {
         });
         String sqlCleanAllLikes = "DELETE FROM \"like\" WHERE \"user_id\" = ?";
         jdbcTemplate.update(sqlCleanAllLikes, user.getId());
-        user.getLikedFilms().forEach(filmId -> {
-                    String sqlQuery1 = "MERGE INTO \"like\" VALUES ( ?, ?)";
-                    jdbcTemplate.update(sqlQuery1, filmId, user.getId());
+        String sqlLikedFilms = "MERGE INTO \"like\" VALUES ( ?, ?)";
+        List<Integer> likedFilms = new ArrayList<>(user.getLikedFilms());
+        if (likedFilms.size() > 0) {
+            jdbcTemplate.batchUpdate(sqlLikedFilms, new BatchPreparedStatementSetter() {
+                @Override
+                public void setValues(PreparedStatement ps, int i) throws SQLException {
+                    Integer liked = likedFilms.get(i);
+                    ps.setInt(1, liked);
+                    ps.setInt(2, user.getId());
                 }
-        );
+
+                @Override
+                public int getBatchSize() {
+                    return friendsIds.size();
+                }
+            });
+        }
     }
 
     @Override

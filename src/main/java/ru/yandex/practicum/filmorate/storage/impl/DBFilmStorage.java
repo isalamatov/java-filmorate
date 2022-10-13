@@ -4,11 +4,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.exceptions.FilmNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
@@ -20,6 +18,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -117,11 +116,23 @@ public class DBFilmStorage implements FilmStorage {
                 film.getId());
         String sqlCleanLikes = "DELETE FROM \"like\" WHERE \"film_id\" = ? ";
         jdbcTemplate.update(sqlCleanLikes, film.getId());
-        film.getLikedBy().forEach(userId -> {
-                    String sqlQuery1 = "MERGE INTO \"like\" VALUES (?, ?)";
-                    jdbcTemplate.update(sqlQuery1, film.getId(), userId);
+        String sqlQueryLikes = "MERGE INTO \"like\" VALUES (?, ?)";
+        List<Integer> likedBy = new ArrayList<>(film.getLikedBy());
+        if (likedBy.size() > 0) {
+            jdbcTemplate.batchUpdate(sqlQueryLikes, new BatchPreparedStatementSetter() {
+                @Override
+                public void setValues(PreparedStatement ps, int i) throws SQLException {
+                    Integer liked = likedBy.get(i);
+                    ps.setInt(1, film.getId());
+                    ps.setInt(2, liked);
                 }
-        );
+
+                @Override
+                public int getBatchSize() {
+                    return film.getGenres().size();
+                }
+            });
+        }
         String sqlCleanMPA = "DELETE FROM \"film_rating\" WHERE \"film_id\" = ? ";
         jdbcTemplate.update(sqlCleanMPA, film.getId());
         String sqlMPA = "MERGE INTO \"film_rating\" VALUES (?, ?)";

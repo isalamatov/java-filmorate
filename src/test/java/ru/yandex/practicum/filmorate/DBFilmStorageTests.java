@@ -83,6 +83,6 @@ class DBFilmStorageTests {
 	public void dbRemove() {
 		Film film = filmStorage.get(1);
 		filmStorage.remove(film);
-		assertThatThrownBy(()->filmStorage.get(1)).hasMessage("Film with id: \"%d\" not found", 1);
+		assertThatThrownBy(()->filmStorage.get(1)).hasMessage( "Incorrect result size: expected 1, actual 0");
 	}
 }

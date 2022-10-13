@@ -8,15 +8,13 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.service.GenreService;
 
-import javax.persistence.criteria.CriteriaBuilder;
 import java.util.List;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/genres")
 public class GenreController {
 
-    private GenreService genreService;
+    private final GenreService genreService;
 
     @Autowired
     public GenreController(GenreService genreService) {

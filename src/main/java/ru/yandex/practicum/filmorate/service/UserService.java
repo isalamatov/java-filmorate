@@ -3,6 +3,8 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.exceptions.UserAlreadyExistsException;
+import ru.yandex.practicum.filmorate.exceptions.UserNotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.UsersAlreadyNotFriendsException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
@@ -27,11 +29,17 @@ public class UserService {
 
     public User get(Integer id) {
         log.trace("Get user request received.");
+        if (!userStorage.checkUser(id)) {
+            throw new UserNotFoundException(id);
+        }
         return userStorage.get(id);
     }
 
     public void update(User user) {
         log.trace("Update user request received with data: {}", user);
+        if (!userStorage.checkUser(user.getId())) {
+            throw new UserNotFoundException(user.getId());
+        }
         userStorage.update(user);
     }
 
@@ -40,11 +48,19 @@ public class UserService {
         if (user.getName().isEmpty() || user.getName() == null) {
             user.setName(user.getLogin());
         }
+        if (userStorage.checkUser(user)) {
+            throw new UserAlreadyExistsException(user.getEmail());
+        }
         userStorage.add(user);
     }
 
     public void addFriend(Integer mainId, Integer secondaryId) {
         log.trace("Add friend request recieved with ids: {}, {}", mainId, secondaryId);
+        if (!userStorage.checkUser(mainId)) {
+            throw new UserNotFoundException(mainId);
+        } else if (!userStorage.checkUser(secondaryId)) {
+            throw new UserNotFoundException(secondaryId);
+        }
         User user = userStorage.get(mainId);
         User friend = userStorage.get(secondaryId);
         if (user.getFriendsId() == null) {
@@ -55,12 +71,15 @@ public class UserService {
         }
         user.getFriendsId().add(secondaryId);
         userStorage.update(user);
-//        friend.getFriendsId().add(mainId);
-//        userStorage.update(friend);
     }
 
     public void deleteFriend(Integer mainId, Integer secondaryId) {
         log.trace("Delete friend request recieved with ids: {}, {}", mainId, secondaryId);
+        if (!userStorage.checkUser(mainId)) {
+            throw new UserNotFoundException(mainId);
+        } else if (!userStorage.checkUser(secondaryId)) {
+            throw new UserNotFoundException(secondaryId);
+        }
         User user = userStorage.get(mainId);
         if (user.getFriendsId().contains(secondaryId)) {
             user.getFriendsId().remove(secondaryId);
@@ -68,16 +87,13 @@ public class UserService {
         } else {
             throw new UsersAlreadyNotFriendsException(mainId, secondaryId);
         }
-//        if (friend.getFriendsId().contains(mainId)) {
-//            friend.getFriendsId().remove(mainId);
-//            userStorage.update(friend);
-//        } else {
-//            throw new UsersAlreadyNotFriendsException(secondaryId, mainId);
-//        }
     }
 
     public List<User> getFriends(Integer mainId) {
         log.trace("Get friends request recieved with id: {}", mainId);
+        if (!userStorage.checkUser(mainId)) {
+            throw new UserNotFoundException(mainId);
+        }
         return userStorage.get(mainId).getFriendsId().stream()
                 .map(x -> userStorage.get(x))
                 .collect(Collectors.toList());
@@ -85,6 +101,12 @@ public class UserService {
 
     public List<User> getCommonFriends(Integer mainId, Integer secondaryId) {
         log.trace("Add common friends request recieved with ids: {}, {}", mainId, secondaryId);
+        if (!userStorage.checkUser(mainId)) {
+            throw new UserNotFoundException(mainId);
+        }
+        if (!userStorage.checkUser(secondaryId)) {
+            throw new UserNotFoundException(secondaryId);
+        }
         if (userStorage.get(mainId).getFriendsId() == null
                 || userStorage.get(secondaryId).getFriendsId() == null) {
             return Collections.emptyList();

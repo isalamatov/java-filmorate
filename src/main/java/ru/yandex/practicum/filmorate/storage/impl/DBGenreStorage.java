@@ -13,7 +13,7 @@ import java.util.List;
 @Primary
 public class DBGenreStorage {
 
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
 
     @Autowired
     public DBGenreStorage(JdbcTemplate jdbcTemplate) {

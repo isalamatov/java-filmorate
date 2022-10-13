@@ -2,8 +2,11 @@ package ru.yandex.practicum.filmorate.storage.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
-import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
+import org.springframework.jdbc.core.RowMapperResultSetExtractor;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
@@ -17,9 +20,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 @Repository
@@ -53,11 +56,7 @@ public class DBUserStorage implements UserStorage {
                 "\"birthday\" " +
                 "FROM \"user\" " +
                 "WHERE \"user_id\" = ? ";
-        try {
-            return jdbcTemplate.queryForObject(sqlQuery, (rs, rn) -> makeUser(rs), id);
-        } catch (EmptyResultDataAccessException exception) {
-            throw new UserNotFoundException(id);
-        }
+        return jdbcTemplate.queryForObject(sqlQuery, (rs, rn) -> makeUser(rs), id);
     }
 
     @Override
@@ -84,21 +83,29 @@ public class DBUserStorage implements UserStorage {
                 "\"name\" = ?, " +
                 "\"birthday\" = ? " +
                 "WHERE \"user_id\" = ? ";
-        if (jdbcTemplate.update(sqlQuery,
+        jdbcTemplate.update(sqlQuery,
                 user.getEmail(),
                 user.getLogin(),
                 user.getName(),
                 user.getBirthday(),
-                user.getId()) == 0) {
-            throw new UserNotFoundException(user.getId());
-        }
+                user.getId());
         String sqlCleanAllFriends = "DELETE FROM \"friend\" WHERE \"user_id\"= ? ";
         jdbcTemplate.update(sqlCleanAllFriends, user.getId());
-        user.getFriendsId().forEach(friendId -> {
-                    String sqlQuery1 = "MERGE INTO \"friend\" VALUES ( ?, ?, true)";
-                    jdbcTemplate.update(sqlQuery1, user.getId(), friendId);
-                }
-        );
+        String sqlQueryFriends = "MERGE INTO \"friend\" VALUES ( ?, ?, true)";
+        List<Integer> friendsIds = new ArrayList<>(user.getFriendsId());
+        jdbcTemplate.batchUpdate(sqlQueryFriends, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                Integer friendsId = friendsIds.get(i);
+                ps.setInt(1, user.getId());
+                ps.setInt(2, friendsId);
+            }
+
+            @Override
+            public int getBatchSize() {
+                return friendsIds.size();
+            }
+        });
         String sqlCleanAllLikes = "DELETE FROM \"like\" WHERE \"user_id\" = ?";
         jdbcTemplate.update(sqlCleanAllLikes, user.getId());
         user.getLikedFilms().forEach(filmId -> {
@@ -117,6 +124,24 @@ public class DBUserStorage implements UserStorage {
         }
         String sqlQuery = "DELETE FROM \"user\" WHERE \"user_id\" = ?";
         jdbcTemplate.update(sqlQuery, user.getId());
+    }
+
+    @Override
+    public boolean checkUser(Integer id) {
+        String sqlQuery = "SELECT CASE WHEN COUNT(1) > 0 THEN TRUE ELSE FALSE END AS result FROM \"user\" WHERE \"user_id\" = ?";
+        String result = jdbcTemplate.query(sqlQuery,
+                (rs, rn) -> rs.getString("result"),
+                id).get(0);
+        return Boolean.parseBoolean(result);
+    }
+
+    @Override
+    public boolean checkUser(User user) {
+        String sqlQuery = "SELECT CASE WHEN COUNT(1) > 0 THEN TRUE ELSE FALSE END AS result FROM \"user\" WHERE \"email\" = ?";
+        String result = jdbcTemplate.query(sqlQuery,
+                (rs, rn) -> rs.getString("result"),
+                user.getEmail()).get(0);
+        return Boolean.parseBoolean(result);
     }
 
     private User makeUser(ResultSet rs) throws SQLException {

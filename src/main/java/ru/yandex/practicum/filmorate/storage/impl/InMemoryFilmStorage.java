@@ -29,12 +29,13 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public void add(Film film) {
+    public Film add(Film film) {
         if (films.containsValue(film)) {
-            throw new FilmAlreadyExistsException(film.getId());
+            throw new FilmAlreadyExistsException(film.getName());
         }
         film.setId(generateId());
         films.put(film.getId(), film);
+        return film;
     }
 
     @Override
@@ -55,6 +56,21 @@ public class InMemoryFilmStorage implements FilmStorage {
             throw new FilmNotFoundException(film.getId());
         }
         films.remove(film.getId());
+    }
+
+    @Override
+    public boolean checkFilm(Integer id) {
+        return false;
+    }
+
+    @Override
+    public boolean checkFilm(Film film) {
+        return false;
+    }
+
+    @Override
+    public List<Film> getPopularFilms(Integer count) {
+        return null;
     }
 
     private Integer generateId() {

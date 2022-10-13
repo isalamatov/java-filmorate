@@ -64,6 +64,16 @@ public class InMemoryUserStorage implements UserStorage {
         users.remove(user.getId());
     }
 
+    @Override
+    public boolean checkUser(Integer id) {
+        return false;
+    }
+
+    @Override
+    public boolean checkUser(User user) {
+        return false;
+    }
+
     private Integer generateId() {
         return ++lastId;
     }

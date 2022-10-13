@@ -1,7 +1,7 @@
 package ru.yandex.practicum.filmorate.exceptions;
 
 public class FilmAlreadyExistsException extends RuntimeException{
-    public FilmAlreadyExistsException(Integer id) {
-        super(String.format("Film with id: \"%d\" already exists", id));
+    public FilmAlreadyExistsException(String name) {
+        super(String.format("Film with id: \"%s\" already exists", name));
     }
 }

@@ -85,6 +85,6 @@ class DBUserStorageTests {
     public void dbUserRemove() {
         User user = userStorage.get(1);
         userStorage.remove(user);
-        assertThatThrownBy(() -> userStorage.get(1)).hasMessage("User with id: \"%d\" not found", 1);
+        assertThatThrownBy(() -> userStorage.get(1)).hasMessage("Incorrect result size: expected 1, actual 0");
     }
 }

@@ -2,8 +2,9 @@ package ru.yandex.practicum.filmorate.storage.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
-import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
@@ -58,15 +59,11 @@ public class DBFilmStorage implements FilmStorage {
                 "f.\"rating_id\"" +
                 "FROM \"film\" AS f " +
                 "WHERE f.\"film_id\" = ? ";
-        try {
-            return jdbcTemplate.queryForObject(sqlQuery, (rs, rn) -> makeFilm(rs), id);
-        } catch (EmptyResultDataAccessException exception) {
-            throw new FilmNotFoundException(id);
-        }
+        return jdbcTemplate.queryForObject(sqlQuery, (rs, rn) -> makeFilm(rs), id);
     }
 
     @Override
-    public void add(Film film) {
+    public Film add(Film film) {
         String sqlQuery = "INSERT INTO \"film\" (\"name\", \"description\", \"release_date\", \"duration\", \"rate\", \"rating_id\")" +
                 "VALUES (?, ?, ?, ?, ?, ?) ";
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -84,9 +81,20 @@ public class DBFilmStorage implements FilmStorage {
         String sqlMPA = "MERGE INTO \"film_rating\" VALUES (?, ?)";
         jdbcTemplate.update(sqlMPA, film.getId(), film.getMpa().getId());
         String sqlGenre = "MERGE INTO \"film_genre\" VALUES (?, ?)";
-        film.getGenres().forEach(genre ->
-                jdbcTemplate.update(sqlGenre, film.getId(), genre.getId())
-        );
+        jdbcTemplate.batchUpdate(sqlGenre, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                Genre genre = film.getGenres().get(i);
+                ps.setInt(1, film.getId());
+                ps.setInt(2, genre.getId());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return film.getGenres().size();
+            }
+        });
+        return film;
     }
 
     @Override
@@ -99,16 +107,14 @@ public class DBFilmStorage implements FilmStorage {
                 " \"rate\" = ?," +
                 "\"rating_id\" = ?" +
                 "WHERE \"film_id\" = ?";
-        if (jdbcTemplate.update(sqlQuery,
+        jdbcTemplate.update(sqlQuery,
                 film.getName(),
                 film.getDescription(),
                 film.getReleaseDate(),
                 film.getDuration(),
                 film.getRate(),
                 film.getMpa().getId(),
-                film.getId()) == 0) {
-            throw new FilmNotFoundException(film.getId());
-        }
+                film.getId());
         String sqlCleanLikes = "DELETE FROM \"like\" WHERE \"film_id\" = ? ";
         jdbcTemplate.update(sqlCleanLikes, film.getId());
         film.getLikedBy().forEach(userId -> {
@@ -122,22 +128,62 @@ public class DBFilmStorage implements FilmStorage {
         jdbcTemplate.update(sqlMPA, film.getId(), film.getMpa().getId());
         String sqlCleanGenre = "DELETE FROM \"film_genre\" WHERE \"film_id\" = ? ";
         jdbcTemplate.update(sqlCleanGenre, film.getId());
-        film.getGenres().forEach(genre -> {
-                    String sqlGenre = "MERGE INTO \"film_genre\" VALUES (?, ?)";
-                    jdbcTemplate.update(sqlGenre, film.getId(), genre.getId());
-                }
-        );
+        String sqlGenre = "MERGE INTO \"film_genre\" VALUES (?, ?)";
+        jdbcTemplate.batchUpdate(sqlGenre, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                Genre genre = film.getGenres().get(i);
+                ps.setInt(1, film.getId());
+                ps.setInt(2, genre.getId());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return film.getGenres().size();
+            }
+        });
     }
 
     @Override
     public void remove(Film film) {
-        try {
-            get(film.getId());
-        } catch (FilmNotFoundException exception) {
-            throw exception;
-        }
         String sqlQuery = "DELETE FROM \"film\" WHERE \"film_id\" = ?";
         jdbcTemplate.update(sqlQuery, film.getId());
+    }
+
+    @Override
+    public boolean checkFilm(Integer id) {
+        String sqlQuery = "SELECT CASE WHEN COUNT(1) > 0 THEN TRUE ELSE FALSE END AS result FROM \"film\" WHERE \"film_id\" = ?";
+        String result = jdbcTemplate.query(sqlQuery,
+                (rs, rn) -> rs.getString("result"),
+                id).get(0);
+        return Boolean.parseBoolean(result);
+    }
+
+    @Override
+    public boolean checkFilm(Film film) {
+        String sqlQuery = "SELECT CASE WHEN COUNT(1) > 0 THEN TRUE ELSE FALSE END AS result FROM \"film\" WHERE \"name\" = ?";
+        String result = jdbcTemplate.query(sqlQuery,
+                (rs, rn) -> rs.getString("result"),
+                film.getId()).get(0);
+        return Boolean.parseBoolean(result);
+    }
+
+    @Override
+    public List<Film> getPopularFilms(Integer count) {
+        String sqlQuery = "SELECT f.\"film_id\"," +
+                " f.\"name\"," +
+                "f.\"description\", " +
+                "f.\"release_date\", " +
+                "f.\"duration\"," +
+                "f.\"rate\"," +
+                "f.\"rating_id\"," +
+                "COUNT(l.\"user_id\") AS likes " +
+                "FROM \"film\" AS f " +
+                "LEFT JOIN \"like\" AS l ON f.\"film_id\" = l.\"film_id\"" +
+                "GROUP BY f.\"film_id\" " +
+                "ORDER BY likes DESC " +
+                "LIMIT ?";
+        return jdbcTemplate.query(sqlQuery, (rs, rn) -> makeFilm(rs), count);
     }
 
     private Film makeFilm(ResultSet rs) throws SQLException {

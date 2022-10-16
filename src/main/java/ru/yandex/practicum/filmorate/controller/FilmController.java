@@ -2,12 +2,8 @@ package ru.yandex.practicum.filmorate.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exceptions.FilmNotFoundException;
-import ru.yandex.practicum.filmorate.exceptions.UserNotFoundException;
-import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.service.UserService;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -15,13 +11,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/films")
 public class FilmController {
-    private FilmService filmService;
-    private UserService userService;
+    private final FilmService filmService;
 
     @Autowired
-    public FilmController(FilmService filmService, UserService userService) {
+    public FilmController(FilmService filmService) {
         this.filmService = filmService;
-        this.userService = userService;
     }
 
     @GetMapping
@@ -36,65 +30,26 @@ public class FilmController {
 
     @PutMapping
     public Film update(@Valid @RequestBody Film film) {
-        filmService.update(film);
-        return film;
+        return filmService.update(film);
     }
 
     @PostMapping
     public Film add(@Valid @RequestBody Film film) {
-        filmService.add(film);
-        return film;
+        return filmService.add(film);
     }
 
     @PutMapping("/{id}/like/{userId}")
-    public void like(@PathVariable String id, @PathVariable String userId) {
-        Integer userID = parseUserId(userId);
-        Integer filmId = parseFilmId(id);
-        filmService.like(filmId, userID);
+    public void like(@PathVariable Integer id, @PathVariable Integer userId) {
+        filmService.like(id, userId);
     }
 
     @DeleteMapping("/{id}/like/{userId}")
-    public void deleteLike(@PathVariable String id, @PathVariable String userId) {
-        Integer userID = parseUserId(userId);
-        Integer filmId = parseFilmId(id);
-        filmService.deleteLike(filmId, userID);
+    public void deleteLike(@PathVariable Integer id, @PathVariable Integer userId) {
+        filmService.deleteLike(id, userId);
     }
 
     @GetMapping("/popular")
     public List<Film> getPopularFilms(@RequestParam(defaultValue = "10") Integer count) {
-        if (count < 0) {
-            throw new ValidationException("Count must be positive number");
-        }
         return filmService.getPopularFilms(count);
-    }
-
-    private Integer parseFilmId(String id) {
-        Integer result;
-        try {
-            result = Integer.parseInt(id);
-        } catch (NumberFormatException e) {
-            throw new ValidationException(
-                    String.format("Film id must be valid integer number \"%s\" ", e.getMessage())
-            );
-        }
-        if (filmService.getAll().stream().noneMatch(x -> x.getId() == result)) {
-            throw new FilmNotFoundException(result);
-        }
-        return result;
-    }
-
-    private Integer parseUserId(String id) {
-        Integer result;
-        try {
-            result = Integer.parseInt(id);
-        } catch (NumberFormatException e) {
-            throw new ValidationException(
-                    String.format("User id must be valid integer number \"%s\" ", e.getMessage())
-            );
-        }
-        if (userService.getAll().stream().noneMatch(x -> x.getId() == result)) {
-            throw new UserNotFoundException(result);
-        }
-        return result;
     }
 }

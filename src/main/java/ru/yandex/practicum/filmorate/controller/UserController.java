@@ -8,6 +8,7 @@ import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
+import javax.persistence.criteria.CriteriaBuilder;
 import javax.validation.Valid;
 import java.util.List;
 
@@ -15,13 +16,10 @@ import java.util.List;
 @RequestMapping("/users")
 public class UserController {
 
-    private UserStorage userStorage;
-
     private UserService userService;
 
     @Autowired
-    public UserController(UserStorage userStorage, UserService userService) {
-        this.userStorage = userStorage;
+    public UserController(UserService userService) {
         this.userService = userService;
     }
 
@@ -38,54 +36,32 @@ public class UserController {
     @PutMapping
     public User update(@Valid @RequestBody User user) {
         userService.update(user);
-        return user;
+        return userService.get(user.getId());
     }
 
     @PostMapping
     public User add(@Valid @RequestBody User user) {
         userService.add(user);
-        return user;
+        return userService.get(user.getId());
     }
 
     @PutMapping("/{id}/friends/{friendId}")
-    public void addFriend(@PathVariable String id, @PathVariable String friendId) {
-        Integer mainId = parseId(id);
-        Integer secondaryId = parseId(friendId);
-        userService.addFriend(mainId, secondaryId);
+    public void addFriend(@PathVariable Integer id, @PathVariable Integer friendId) {
+        userService.addFriend(id, friendId);
     }
 
     @DeleteMapping("/{id}/friends/{friendId}")
-    public void deleteFriend(@PathVariable String id, @PathVariable String friendId) {
-        Integer mainId = parseId(id);
-        Integer secondaryId = parseId(friendId);
-        userService.deleteFriend(mainId, secondaryId);
+    public void deleteFriend(@PathVariable Integer id, @PathVariable Integer friendId) {
+        userService.deleteFriend(id, friendId);
     }
 
     @GetMapping("/{id}/friends")
-    public List<User> getFriends(@PathVariable String id) {
-        Integer mainId = parseId(id);
-        return userService.getFriends(mainId);
+    public List<User> getFriends(@PathVariable Integer id) {
+        return userService.getFriends(id);
     }
 
     @GetMapping("/{id}/friends/common/{otherId}")
-    public List<User> getCommonFriends(@PathVariable String id, @PathVariable String otherId) {
-        Integer mainId = parseId(id);
-        Integer secondaryId = parseId(otherId);
-        return userService.getCommonFriends(mainId, secondaryId);
-    }
-
-    private Integer parseId(String id) {
-        Integer result;
-        try {
-            result = Integer.parseInt(id);
-        } catch (NumberFormatException e) {
-            throw new ValidationException(
-                    String.format("Id and friend id should be valid integer numbers \"%s\" ", e.getMessage())
-            );
-        }
-        if (userService.getAll().stream().noneMatch(x -> x.getId() == result)) {
-            throw new UserNotFoundException(result);
-        }
-        return result;
+    public List<User> getCommonFriends(@PathVariable Integer id, @PathVariable Integer otherId) {
+        return userService.getCommonFriends(id, otherId);
     }
 }

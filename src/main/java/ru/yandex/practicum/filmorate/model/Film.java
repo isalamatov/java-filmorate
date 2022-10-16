@@ -10,7 +10,9 @@ import javax.validation.constraints.Digits;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Positive;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -27,7 +29,35 @@ public class Film {
     @Duration
     @Positive
     private Integer duration;
-    private Set<Integer> likedBy = new HashSet<>();
+    private Integer rate;
+
+    private Mpa mpa;
+    private List<Genre> genres;
+    private Set<Integer> likedBy;
+
+    public Film(Integer id, String name, String description, LocalDate releaseDate, Integer duration, Integer rate, Mpa mpa, List<Genre> genres, Set<Integer> likedBy) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.releaseDate = releaseDate;
+        this.duration = duration;
+        this.rate = rate;
+        if (mpa == null) {
+            this.mpa = new Mpa();
+        } else {
+            this.mpa = mpa;
+        }
+        if (genres == null) {
+            this.genres = new ArrayList<>();
+        } else {
+            this.genres = genres;
+        }
+        if (likedBy == null) {
+            this.likedBy = new HashSet<>();
+        } else {
+            this.likedBy = likedBy;
+        }
+    }
 
     @Override
     public boolean equals(Object o) {

@@ -3,15 +3,14 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.filmorate.exceptions.UserDoesnotLikeThatMovieException;
+import ru.yandex.practicum.filmorate.exceptions.*;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -32,40 +31,65 @@ public class FilmService {
 
     public Film get(Integer id) {
         log.trace("Get film request received: {}", id);
+        if (!filmStorage.checkFilm(id)) {
+            throw new FilmNotFoundException(id);
+        }
         return filmStorage.get(id);
     }
 
-    public void update(Film film) {
+    public Film update(Film film) {
         log.trace("Update film request received with data: {}", film);
+        if (!filmStorage.checkFilm(film.getId())) {
+            throw new FilmNotFoundException(film.getId());
+        }
         filmStorage.update(film);
+        return filmStorage.get(film.getId());
     }
 
-    public void add(Film film) {
+    public Film add(Film film) {
         log.trace("Add film request received with data: {}", film);
-        filmStorage.add(film);
+        if (filmStorage.checkFilm(film)) {
+            throw new FilmAlreadyExistsException(film.getName());
+        }
+        return filmStorage.add(film);
     }
 
     public void like(Integer filmId, Integer userID) {
         log.trace("Like film request received with data: {}", filmId, userID);
-        if (userStorage.get(userID).getLikedFilms() == null) {
-            userStorage.get(userID).setLikedFilms(new HashSet<>());
+
+        Film film = filmStorage.get(filmId);
+        User user = userStorage.get(userID);
+        if (user.getLikedFilms() == null) {
+            user.setLikedFilms(new HashSet<>());
         }
-        if (filmStorage.get(filmId).getLikedBy() == null) {
-            filmStorage.get(filmId).setLikedBy(new HashSet<>());
+        if (film.getLikedBy() == null) {
+            film.setLikedBy(new HashSet<>());
         }
-        userStorage.get(userID).getLikedFilms().add(filmId);
-        filmStorage.get(filmId).getLikedBy().add(userID);
+        user.getLikedFilms().add(filmId);
+        userStorage.update(user);
+        film.getLikedBy().add(userID);
+        filmStorage.update(film);
     }
 
     public void deleteLike(Integer filmId, Integer userID) {
         log.trace("Delete like request received with data: {}", filmId, userID);
-        if (userStorage.get(userID).getLikedFilms().contains(filmId)) {
-            userStorage.get(userID).getLikedFilms().remove(filmId);
+        if (!filmStorage.checkFilm(filmId)) {
+            throw new FilmNotFoundException(filmId);
+        }
+        if (!userStorage.checkUser(userID)) {
+            throw new UserNotFoundException(userID);
+        }
+        Film film = filmStorage.get(filmId);
+        User user = userStorage.get(userID);
+        if (user.getLikedFilms().contains(filmId)) {
+            user.getLikedFilms().remove(filmId);
+            userStorage.update(user);
         } else {
             throw new UserDoesnotLikeThatMovieException(filmId, userID);
         }
-        if (filmStorage.get(filmId).getLikedBy().contains(userID)) {
-            filmStorage.get(filmId).getLikedBy().remove(userID);
+        if (film.getLikedBy().contains(userID)) {
+            film.getLikedBy().remove(userID);
+            filmStorage.update(film);
         } else {
             throw new UserDoesnotLikeThatMovieException(filmId, userID);
         }
@@ -73,12 +97,9 @@ public class FilmService {
 
     public List<Film> getPopularFilms(Integer count) {
         log.trace("Get popular films request received, list size: {}", count);
-        return filmStorage.getAll().stream()
-                .peek(x -> {
-                    if (x.getLikedBy() == null) x.setLikedBy(new HashSet<>());
-                })
-                .sorted(Comparator.comparingInt(o -> -o.getLikedBy().size()))
-                .limit(count)
-                .collect(Collectors.toList());
+        if (count < 0) {
+            throw new ValidationException("Count must be positive number");
+        }
+        return filmStorage.getPopularFilms(count);
     }
 }
